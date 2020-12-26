@@ -34,8 +34,8 @@ from flaskbb.plugins.utils import validate_plugin
 from flaskbb.user.models import Group, Guest, User
 from flaskbb.utils.forms import populate_settings_dict, populate_settings_form
 from flaskbb.utils.helpers import (get_online_users, register_view,
-                                   render_template, time_diff, time_utcnow,
-                                   FlashAndRedirect)
+                                   render_template, redirect_or_next,
+                                   time_diff, time_utcnow, FlashAndRedirect)
 from flaskbb.utils.requirements import (CanBanUser, CanEditUser, IsAdmin,
                                         IsAtleastModerator,
                                         IsAtleastSuperModerator)
@@ -286,9 +286,14 @@ class DeleteUser(MethodView):
 
     def post(self, user_id=None):
         # ajax request
-        if request.is_xhr:
-            ids = request.get_json()["ids"]
-
+        if request.get_json() is not None:
+            ids = request.get_json().get("ids")
+            if not ids:
+                return jsonify(
+                    message="No ids provided.",
+                    category="error",
+                    status=404
+                )
             data = []
             for user in User.query.filter(User.id.in_(ids)).all():
                 # do not delete current user
@@ -307,7 +312,7 @@ class DeleteUser(MethodView):
                     )
 
             return jsonify(
-                message="{} users deleted.".format(len(data)),
+                message=f"{len(data)} users deleted.",
                 category="success",
                 data=data,
                 status=200
@@ -427,8 +432,14 @@ class BanUser(MethodView):
             return redirect(url_for("management.overview"))
 
         # ajax request
-        if request.is_xhr:
-            ids = request.get_json()["ids"]
+        if request.get_json() is not None:
+            ids = request.get_json().get("ids")
+            if not ids:
+                return jsonify(
+                    message="No ids provided.",
+                    category="error",
+                    status=404
+                )
 
             data = []
             users = User.query.filter(User.id.in_(ids)).all()
@@ -441,20 +452,13 @@ class BanUser(MethodView):
                     continue
 
                 elif user.ban():
-                    data.append(
-                        {
-                            "id":
-                            user.id,
-                            "type":
-                            "ban",
-                            "reverse":
-                            "unban",
-                            "reverse_name":
-                            _("Unban"),
-                            "reverse_url":
-                            url_for("management.unban_user", user_id=user.id)
-                        }
-                    )
+                    data.append({
+                        "id": user.id,
+                        "type": "ban",
+                        "reverse": "unban",
+                        "reverse_name": _("Unban"),
+                        "reverse_url": url_for("management.unban_user", user_id=user.id)
+                    })
 
             return jsonify(
                 message="{} users banned.".format(len(data)),
@@ -474,7 +478,8 @@ class BanUser(MethodView):
             flash(_("User is now banned."), "success")
         else:
             flash(_("Could not ban user."), "danger")
-        return redirect(url_for("management.banned_users"))
+
+        return redirect_or_next(url_for("management.banned_users"))
 
 
 class UnbanUser(MethodView):
@@ -500,8 +505,14 @@ class UnbanUser(MethodView):
             return redirect(url_for("management.overview"))
 
         # ajax request
-        if request.is_xhr:
-            ids = request.get_json()["ids"]
+        if request.get_json() is not None:
+            ids = request.get_json().get("ids")
+            if not ids:
+                return jsonify(
+                    message="No ids provided.",
+                    category="error",
+                    status=404
+                )
 
             data = []
             for user in User.query.filter(User.id.in_(ids)).all():
@@ -518,7 +529,7 @@ class UnbanUser(MethodView):
                     )
 
             return jsonify(
-                message="{} users unbanned.".format(len(data)),
+                message=f"{len(data)} users unbanned.",
                 category="success",
                 data=data,
                 status=200
@@ -531,7 +542,7 @@ class UnbanUser(MethodView):
         else:
             flash(_("Could not unban user."), "danger")
 
-        return redirect(url_for("management.banned_users"))
+        return redirect_or_next(url_for("management.users"))
 
 
 class Groups(MethodView):
@@ -641,8 +652,15 @@ class DeleteGroup(MethodView):
     ]
 
     def post(self, group_id=None):
-        if request.is_xhr:
-            ids = request.get_json()["ids"]
+        if request.get_json() is not None:
+            ids = request.get_json().get("ids")
+            if not ids:
+                return jsonify(
+                    message="No ids provided.",
+                    category="error",
+                    status=404
+                )
+
             # TODO: Get rid of magic numbers
             if not (set(ids) & set(["1", "2", "3", "4", "5", "6"])):
                 data = []
@@ -984,8 +1002,14 @@ class MarkReportRead(MethodView):
     def post(self, report_id=None):
 
         # AJAX request
-        if request.is_xhr:
-            ids = request.get_json()["ids"]
+        if request.get_json() is not None:
+            ids = request.get_json().get("ids")
+            if not ids:
+                return jsonify(
+                    message="No ids provided.",
+                    category="error",
+                    status=404
+                )
             data = []
 
             for report in Report.query.filter(Report.id.in_(ids)).all():
@@ -1017,13 +1041,13 @@ class MarkReportRead(MethodView):
                     _("Report %(id)s is already marked as read.", id=report.id),
                     "success"
                 )
-                return redirect(url_for("management.reports"))
+                return redirect_or_next(url_for("management.reports"))
 
             report.zapped_by = current_user.id
             report.zapped = time_utcnow()
             report.save()
             flash(_("Report %(id)s marked as read.", id=report.id), "success")
-            return redirect(url_for("management.reports"))
+            return redirect_or_next(url_for("management.reports"))
 
         # mark all as read
         reports = Report.query.filter(Report.zapped == None).all()
@@ -1037,7 +1061,7 @@ class MarkReportRead(MethodView):
         db.session.commit()
 
         flash(_("All reports were marked as read."), "success")
-        return redirect(url_for("management.reports"))
+        return redirect_or_next(url_for("management.reports"))
 
 
 class DeleteReport(MethodView):
@@ -1053,11 +1077,16 @@ class DeleteReport(MethodView):
     ]
 
     def post(self, report_id=None):
+        if request.get_json() is not None:
+            ids = request.get_json().get("ids")
+            if not ids:
+                return jsonify(
+                    message="No ids provided.",
+                    category="error",
+                    status=404
+                )
 
-        if request.is_xhr:
-            ids = request.get_json()["ids"]
             data = []
-
             for report in Report.query.filter(Report.id.in_(ids)).all():
                 if report.delete():
                     data.append(
@@ -1080,7 +1109,7 @@ class DeleteReport(MethodView):
         report = Report.query.filter_by(id=report_id).first_or_404()
         report.delete()
         flash(_("Report deleted."), "success")
-        return redirect(url_for("management.reports"))
+        return redirect_or_next(url_for("management.reports"))
 
 
 class CeleryStatus(MethodView):

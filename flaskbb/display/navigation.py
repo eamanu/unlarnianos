@@ -8,13 +8,11 @@
     :copyright: (c) 2018 the FlaskBB Team
     :license: BSD, see LICENSE for more details
 """
-
-from abc import abstractproperty
+from abc import ABC, abstractproperty
 from enum import Enum
 
 import attr
 
-from .._compat import ABC
 
 __all__ = (
     "NavigationContentType",
@@ -44,7 +42,7 @@ class NavigationItem(ABC):
     content_type = abstractproperty(lambda: None)
 
 
-@attr.s(cmp=True, hash=True, repr=True, frozen=True, slots=True)
+@attr.s(eq=True, order=True, hash=True, repr=True, frozen=True, slots=True)
 class NavigationLink(NavigationItem):
     """
     Representation of an internal FlaskBB navigation link::
@@ -66,7 +64,7 @@ class NavigationLink(NavigationItem):
     content_type = NavigationContentType.link
 
 
-@attr.s(cmp=True, hash=True, repr=True, frozen=True, slots=True)
+@attr.s(eq=True, order=True, hash=True, repr=True, frozen=True, slots=True)
 class NavigationExternalLink(NavigationItem):
     """
     Representation of an external navigation link::
@@ -83,7 +81,7 @@ class NavigationExternalLink(NavigationItem):
     content_type = NavigationContentType.external_link
 
 
-@attr.s(cmp=True, hash=True, repr=True, frozen=True, slots=True)
+@attr.s(eq=True, order=True, hash=True, repr=True, frozen=True, slots=True)
 class NavigationHeader(NavigationItem):
     """
     Representation of header text shown in a navigation bar::
@@ -99,7 +97,7 @@ class NavigationHeader(NavigationItem):
     content_type = NavigationContentType.header
 
 
-@attr.s(cmp=False, hash=True, repr=True, frozen=True, slots=True)
+@attr.s(eq=True, order=True, hash=True, repr=True, frozen=True, slots=True)
 class NavigationDivider(NavigationItem):
     """
     Representation of a divider in a navigation bar::

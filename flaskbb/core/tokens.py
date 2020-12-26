@@ -9,12 +9,11 @@
     :copyright: (c) 2014-2018 by the FlaskBB Team.
     :license: BSD, see LICENSE for more details
 """
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
 import attr
 from flask_babelplus import gettext as _
 
-from .._compat import ABC
 from .exceptions import BaseFlaskBBError
 
 
@@ -72,7 +71,7 @@ class TokenActions:
     ACTIVATE_ACCOUNT = 'activate_account'
 
 
-@attr.s(frozen=True, cmp=True, hash=True)
+@attr.s(frozen=True, eq=True, order=True, hash=True)
 class Token(object):
     """
     :param int user_id:

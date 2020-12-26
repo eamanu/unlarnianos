@@ -22,7 +22,6 @@ from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
-from flaskbb._compat import iteritems, string_types
 # extensions
 from flaskbb.extensions import (alembic, allows, babel, cache, celery, csrf,
                                 db, debugtoolbar, limiter, login_manager, mail,
@@ -62,6 +61,7 @@ from .forum import views as forum_views  # noqa
 from .management import views as management_views  # noqa
 from .user import views as user_views  # noqa
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -78,6 +78,8 @@ def create_app(config=None, instance_path=None):
                    For example, if the config is specified via an file
                    and a ENVVAR, it will load the config via the file and
                    later overwrite it from the ENVVAR.
+                   If no config is provided, FlaskBB will try to load the
+                   config named ``flaskbb.cfg`` from the instance path.
     """
 
     app = Flask(
@@ -110,7 +112,7 @@ def configure_app(app, config):
     app.config.from_object("flaskbb.configs.default.DefaultConfig")
     config = get_flaskbb_config(app, config)
     # Path
-    if isinstance(config, string_types):
+    if isinstance(config, str):
         app.config.from_pyfile(config)
     # Module
     else:
@@ -128,10 +130,28 @@ def configure_app(app, config):
     # them on the config object
     app_config_from_env(app, prefix="FLASKBB_")
 
+    # Migrate Celery 4.x config to Celery 6.x
+    old_celery_config = app.config.get_namespace('CELERY_')
+    celery_config = {}
+    for key, value in old_celery_config.items():
+        # config is the new format
+        if key != "config":
+            config_key = f"CELERY_{key.upper()}"
+            celery_config[key] = value
+            try:
+                del app.config[config_key]
+            except KeyError:
+                pass
+
+    # merge the new config with the old one
+    new_celery_config = app.config.get("CELERY_CONFIG")
+    new_celery_config.update(celery_config)
+    app.config.update({"CELERY_CONFIG": new_celery_config})
+
     # Setting up logging as early as possible
     configure_logging(app)
 
-    if not isinstance(config, string_types) and config is not None:
+    if not isinstance(config, str) and config is not None:
         config_name = "{}.{}".format(config.__module__, config.__name__)
     else:
         config_name = config
@@ -168,8 +188,7 @@ def configure_app(app, config):
 
 def configure_celery_app(app, celery):
     """Configures the celery app."""
-    app.config.update({"BROKER_URL": app.config["CELERY_BROKER_URL"]})
-    celery.conf.update(app.config)
+    celery.conf.update(app.config.get("CELERY_CONFIG"))
 
     TaskBase = celery.Task
 
@@ -438,7 +457,7 @@ def load_plugins(app):
     # ('None' - appears on py2) and thus using a set
     flaskbb_modules = set(
         module
-        for name, module in iteritems(sys.modules)
+        for name, module in sys.modules.items()
         if name.startswith("flaskbb")
     )
     for module in flaskbb_modules:
@@ -489,7 +508,7 @@ def load_plugins(app):
     disabled_plugins = [
         p.__package__ for p in app.pluggy.get_disabled_plugins()
     ]
-    for task_name, task in iteritems(tasks):
+    for task_name, task in tasks.items():
         if task.__module__.split(".")[0] in disabled_plugins:
             logger.debug("Unregistering task: '{}'".format(task))
             celery.tasks.unregister(task_name)

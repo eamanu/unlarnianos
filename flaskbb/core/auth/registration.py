@@ -9,15 +9,12 @@
     :copyright: (c) 2014-2018 by the FlaskBB Team.
     :license: BSD, see LICENSE for more details.
 """
-
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
 import attr
 
-from ..._compat import ABC
 
-
-@attr.s(hash=True, cmp=False, repr=True, frozen=True)
+@attr.s(hash=True, eq=False, order=False, repr=True, frozen=True)
 class UserRegistrationInfo(object):
     """
     User registration object, contains all relevant information for validating

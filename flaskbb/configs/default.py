@@ -157,7 +157,7 @@ class DefaultConfig(object):
     SQLALCHEMY_ECHO = False
 
     ALEMBIC = {
-        'script_location': os.path.join(basedir, "migrations"),
+        'script_location': os.path.join(basedir, "flaskbb/migrations"),
         'version_locations': '',
         'file_template': '%%(year)d%%(month).2d%%(day).2d%%(hour).2d%%(minute).2d_%%(rev)s_%%(slug)s'
     }
@@ -265,10 +265,11 @@ class DefaultConfig(object):
     REDIS_DATABASE = 0
 
     # Celery
-    CELERY_BROKER_URL = 'redis://localhost:6379'
-    CELERY_RESULT_BACKEND = 'redis://localhost:6379'
-    BROKER_TRANSPORT_OPTIONS = {'max_retries': 1}  # necessary as there's no default
-
+    CELERY_CONFIG = {
+        "broker_url": 'redis://localhost:6379',
+        "result_backend": 'redis://localhost:6379',
+        "broker_transport_options": {'max_retries': 1},
+    }
 
     # FlaskBB Settings
     # ------------------------------ #
