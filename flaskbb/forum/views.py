@@ -70,6 +70,8 @@ class ForumIndex(MethodView):
             online_users = len(get_online_users())
             online_guests = len(get_online_users(guest=True))
 
+        #FIXME:  fix this on upstream
+        flaskbb_config = current_app.config
         return render_template(
             "forum/index.html",
             categories=categories,
@@ -78,7 +80,8 @@ class ForumIndex(MethodView):
             post_count=post_count,
             newest_user=newest_user,
             online_users=online_users,
-            online_guests=online_guests
+            online_guests=online_guests,
+            flaskbb_config=flaskbb_config
         )
 
 
